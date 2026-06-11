@@ -251,6 +251,10 @@ void XT_Wav_Class::LoadWavFile()
         {
             Serial.print("Ivalid Wave file header! Filename: ");
             Serial.println(FileName);
+            // Mark file as invalid so playback won't attempt to use it
+            FileOK = false;
+            WavFile.close();
+            return;
         }
 
         SampleRate = WavHeader.SampleRate;

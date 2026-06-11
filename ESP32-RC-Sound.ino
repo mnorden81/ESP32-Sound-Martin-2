@@ -428,6 +428,12 @@ void loop()
     {  
       Sound_play[3] = true;   
       Sound3.LoadWavFile();
+        Serial.print("Load Sound3: "); Serial.println(Sound3.FileName);
+        Serial.print("Sound3.FileOK = "); Serial.println(Sound3.FileOK);
+        Serial.print("Sound3.SampleRate = "); Serial.println(Sound3.SampleRate);
+        Serial.print("Sound3.NumChannels = "); Serial.println(Sound3.NumChannels);
+        Serial.print("Sound3.BytesPerSample = "); Serial.println(Sound3.BytesPerSample);
+        Serial.print("Sound3.DataSize = "); Serial.println(Sound3.DataSize);
       Sound3.Volume = config.Volumen_Sound[3];
       if (config.Mode_Sound[3] == 1)            // Repeat ?
       {
