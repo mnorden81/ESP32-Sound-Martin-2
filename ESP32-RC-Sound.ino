@@ -103,9 +103,9 @@ float last_throttle = 0;
 float throttle;      
 // int throttle_dead_band = 10;  //Totband Gas
 
-// Wlan Einstellungen AP Modus
-const char* ssid     = "ESP32-RC-Sound";
-const char* password = "123456789";
+// Wlan Einstellungen AP Modus - werden aus config geladen
+char ssid[32];
+char password[64];
 
 //Timer Zeiten
 unsigned long currentTime = millis();   // Aktuelle Zeit
@@ -221,6 +221,12 @@ void setup()
   Serial.begin(115200); // Used for info/debug
 
   loadConfig();    // Einstellung laden
+  
+  // WiFi-Credentials aus config in char-Arrays kopieren
+  strncpy(ssid, config.WiFi_SSID, sizeof(ssid) - 1);
+  ssid[sizeof(ssid) - 1] = '\0';
+  strncpy(password, config.WiFi_Password, sizeof(password) - 1);
+  password[sizeof(password) - 1] = '\0';
   
   // Prüfen, welches RC-System konfiguriert ist
   if (config.Einkanal_RC_System == 4) { // 4 = ELRS (CRSF-Protokoll)

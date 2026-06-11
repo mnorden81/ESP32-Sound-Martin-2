@@ -237,6 +237,29 @@ void WebServerManager::Webpage()
               config.Hardware_Config = (valueString.toInt());
             }    
 
+            // WiFi SSID Parameter verarbeiten
+            if(header.indexOf("GET /?WiFi_SSID=")>=0) {
+              pos1 = header.indexOf('=');
+              pos2 = header.indexOf('&');
+              if (pos2 < 0) pos2 = header.indexOf(' ', pos1);  // Falls kein & folgt
+              valueString = header.substring(pos1+1, pos2);
+              // URL-Dekodierung für Leerzeichen (+ wird zu Leerzeichen)
+              valueString.replace("+", " ");
+              strncpy(config.WiFi_SSID, valueString.c_str(), sizeof(config.WiFi_SSID) - 1);
+              config.WiFi_SSID[sizeof(config.WiFi_SSID) - 1] = '\0';
+            }
+
+            // WiFi Password Parameter verarbeiten
+            if(header.indexOf("GET /?WiFi_Password=")>=0) {
+              pos1 = header.indexOf('=');
+              pos2 = header.indexOf('&');
+              if (pos2 < 0) pos2 = header.indexOf(' ', pos1);  // Falls kein & folgt
+              valueString = header.substring(pos1+1, pos2);
+              valueString.replace("+", " ");
+              strncpy(config.WiFi_Password, valueString.c_str(), sizeof(config.WiFi_Password) - 1);
+              config.WiFi_Password[sizeof(config.WiFi_Password) - 1] = '\0';
+            }
+
             if (header.indexOf("GET /setPWM") >= 0) {
   
               // --- PWM Min auslesen ---
@@ -260,7 +283,7 @@ void WebServerManager::Webpage()
             
             //Werte begrenzen
 
-            Menu = constrain(Menu, 0, 10); // Begrenzt den Bereich Menu auf 1 bis 10.
+            Menu = constrain(Menu, 0, 11); // Begrenzt den Bereich Menu auf 0 bis 11.
             
             //HTML Seite angezeigen:
             client.println("<!DOCTYPE html><html>");
@@ -1152,6 +1175,55 @@ void WebServerManager::Webpage()
             client.println("<br> Konfig Einkanal Mode: " + valueString);
             valueString = String(config.modul_adress, DEC);
             client.println("<br> Konfig CRSF Modul Adress: " + valueString + "</p> </div>");
+            break;
+
+            case 11:
+            
+            client.println("<p class=\"text2\" ><b>WiFi Einstellung</b></p>");  
+            
+            client.println("<p><a href=\"/back\"><button class=\"button button3\">Back</button></a>");
+            client.println("<a href=\"/next\"><button class=\"button button4\">Next</button></a></p>");
+            
+            client.println("<br />");
+            
+            // WiFi SSID Eingabe
+            client.println("<p class=\"text2\" >WiFi SSID</p>");
+            client.println("<p><input type=\"text\" id=\"WiFi_SSID\" maxlength=\"31\" style=\"width:200px; height:25px;\" onchange=\"setWiFiSSID()\"></p>");
+            
+            client.println("<script> function setWiFiSSID() { ");
+            client.println("var val = document.getElementById(\"WiFi_SSID\").value;");
+            client.println("var xhr = new XMLHttpRequest();");
+            client.println("xhr.open('GET', \"/?WiFi_SSID=\" + encodeURIComponent(val) + \"&\", true);");
+            client.println("xhr.send(); } </script>");
+            
+            // Aktuellen SSID anzeigen
+            client.println("<script>");
+            client.println("document.getElementById(\"WiFi_SSID\").value = \"" + String(config.WiFi_SSID) + "\";");
+            client.println("</script>");
+            
+            client.println("<br />");
+            
+            // WiFi Password Eingabe
+            client.println("<p class=\"text2\" >WiFi Passwort</p>");
+            client.println("<p><input type=\"password\" id=\"WiFi_Password\" maxlength=\"63\" style=\"width:200px; height:25px;\" onchange=\"setWiFiPassword()\"></p>");
+            
+            client.println("<script> function setWiFiPassword() { ");
+            client.println("var val = document.getElementById(\"WiFi_Password\").value;");
+            client.println("var xhr = new XMLHttpRequest();");
+            client.println("xhr.open('GET', \"/?WiFi_Password=\" + encodeURIComponent(val) + \"&\", true);");
+            client.println("xhr.send(); } </script>");
+            
+            // Aktuelles Password anzeigen
+            client.println("<script>");
+            client.println("document.getElementById(\"WiFi_Password\").value = \"" + String(config.WiFi_Password) + "\";");
+            client.println("</script>");
+            
+            client.println("<br />");
+            
+            // Save Button
+            client.println("<p><a href=\"/save\"><button class=\"button button2\">Save</button></a></p>");
+            
+            break;
             }
 
             client.println("<script> function setsoundon() { ");

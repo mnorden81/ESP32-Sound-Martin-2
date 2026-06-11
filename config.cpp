@@ -57,8 +57,13 @@ void Reset_all() {
   config.engine_on_toggle = 0;
 
   config.PWM_scale_min = 1000;
-  config.PWM_scale_max = 2000;  
-}
+  config.PWM_scale_max = 2000;
+  
+  // WiFi Konfiguration
+  strncpy(config.WiFi_SSID, "ESP32-RC-Sound", sizeof(config.WiFi_SSID) - 1);
+  config.WiFi_SSID[sizeof(config.WiFi_SSID) - 1] = '\0';
+  strncpy(config.WiFi_Password, "123456789", sizeof(config.WiFi_Password) - 1);
+  config.WiFi_Password[sizeof(config.WiFi_Password) - 1] = '\0';
 // ======== Voreinstellungen SBUS  =======================================
 void set_sbus() {
   config.Source_Start_Sound[0] = 10;

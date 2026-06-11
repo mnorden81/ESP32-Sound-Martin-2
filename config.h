@@ -26,6 +26,8 @@ struct ConfigData {
   int Hardware_Config;            // Hardware Config
   int PWM_scale_min;              // PWM min Wert Scalierung
   int PWM_scale_max;              // PWM max Wert Scalierung
+  char WiFi_SSID[32];             // WiFi SSID (max 31 chars + null terminator)
+  char WiFi_Password[64];         // WiFi Passwort (max 63 chars + null terminator)
 };
 
 // Globale Instanz der Konfiguration
