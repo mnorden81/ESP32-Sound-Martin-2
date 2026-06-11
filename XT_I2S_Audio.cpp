@@ -305,6 +305,8 @@ void XT_Wav_Class::ReadFile()
 
 void XT_Wav_Class::Init()
 {
+    Serial.print("XT_Wav_Class::Init() called for: ");
+    Serial.println(FileName);
     LastIntCount = 0;
     if (Speed >= 0 && FileOK)
     {
