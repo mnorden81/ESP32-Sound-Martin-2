@@ -23,7 +23,7 @@ static portMUX_TYPE s_ringInitMux = portMUX_INITIALIZER_UNLOCKED;
 // SLOT_BYTES muss Vielfaches von 4 sein. Wähle passend zur i2s_config.dma_buf_len (z.B. 256 oder 512).
 #define SLOT_BYTES       512
 #define SLOT_WORDS       (SLOT_BYTES / 4)
-#define RING_SLOTS       8 // am besten Potenz von 2
+#define RING_SLOTS       16 // erhöht auf 16 für besseren Puffer
 static_assert((RING_SLOTS & (RING_SLOTS - 1)) == 0, "RING_SLOTS must be power of two");
 
 static uint32_t ringBuffer[RING_SLOTS][SLOT_WORDS];
@@ -34,6 +34,8 @@ static SemaphoreHandle_t ringMutex = nullptr;
 static SemaphoreHandle_t slotCountSem = nullptr;  // gefüllte Slots
 static SemaphoreHandle_t freeSlotSem = nullptr;   // freie Slots
 static TaskHandle_t i2sConsumerTaskHandle = nullptr;
+static TaskHandle_t i2sProducerTaskHandle = nullptr;
+static volatile XT_I2S_Class *s_pI2SAudioInstance = nullptr;  // Pointer zur Instanz für Producer Task
 
 /**********************************************************************************************************************/
 /* global functions                                                                                                   */
@@ -413,6 +415,9 @@ XT_I2S_Class::XT_I2S_Class(uint8_t LRCLKPin, uint8_t BCLKPin, uint8_t I2SOutPin,
 		taskEXIT_CRITICAL(&s_ringInitMux);
 
 
+    // Speichere Instanz-Pointer für Producer Task
+    s_pI2SAudioInstance = this;
+
     if (i2sConsumerTaskHandle == nullptr)
     {
         // Stack size 4096 sollte angepasst werden falls nötig
@@ -460,6 +465,31 @@ XT_I2S_Class::XT_I2S_Class(uint8_t LRCLKPin, uint8_t BCLKPin, uint8_t I2SOutPin,
             &i2sConsumerTaskHandle,
             1);
     }
+
+    // Producer Task: Füllt kontinuierlich den Ringbuffer
+    if (i2sProducerTaskHandle == nullptr)
+    {
+        xTaskCreatePinnedToCore(
+            [](void *param) {
+                // Producer task - füllt kontinuierlich den Ringbuffer
+                for (;;)
+                {
+                    if (s_pI2SAudioInstance != nullptr)
+                    {
+                        ((XT_I2S_Class*)s_pI2SAudioInstance)->FillBuffer();
+                    }
+                    // Yield kurz, damit Consumer Task auch ausführen kann
+                    // 1ms delay für optimale Balance zwischen Producer und Consumer
+                    vTaskDelay(pdMS_TO_TICKS(1));
+                }
+            },
+            "I2SProducer",
+            4096,
+            nullptr,
+            2,
+            &i2sProducerTaskHandle,
+            1);
+    }
 }
 
 XT_I2S_Class::~XT_I2S_Class()
@@ -471,9 +501,18 @@ XT_I2S_Class::~XT_I2S_Class()
         i2sConsumerTaskHandle = nullptr;
     }
 
+    // stop producer task
+    if (i2sProducerTaskHandle != nullptr)
+    {
+        vTaskDelete(i2sProducerTaskHandle);
+        i2sProducerTaskHandle = nullptr;
+    }
+
     if (ringMutex) { vSemaphoreDelete(ringMutex); ringMutex = nullptr; }
     if (slotCountSem) { vSemaphoreDelete(slotCountSem); slotCountSem = nullptr; }
     if (freeSlotSem) { vSemaphoreDelete(freeSlotSem); freeSlotSem = nullptr; }
+
+    s_pI2SAudioInstance = nullptr;
 
     i2s_driver_uninstall(PortNum); // Free resources
 }

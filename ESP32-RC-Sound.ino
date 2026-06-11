@@ -346,7 +346,8 @@ void loop()
 
   Config();                         // Einstellungen anwenden
   
-  I2SAudio.FillBuffer();
+  // FillBuffer wird jetzt von einem separaten Producer Task aufgerufen!
+  // I2SAudio.FillBuffer();  // <- REMOVED, Producer Task übernimmt das
 
   if (currentTime > 5000)  //Startup warte eben 5 Sekunden
   {
