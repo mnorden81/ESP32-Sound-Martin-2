@@ -537,6 +537,15 @@ void XT_I2S_Class::Play(XT_PlayListItem_Class *Sound, bool Mix)
 
 void XT_I2S_Class::Play(XT_PlayListItem_Class *Sound, bool Mix, int16_t TheVolume)
 {
+    Serial.print("Play() called for item: "); Serial.println((uintptr_t)Sound);
+    // If this is a WAV item, print filename and FileOK
+    XT_Wav_Class *wav = dynamic_cast<XT_Wav_Class *>(reinterpret_cast<XT_Wav_Class *>(Sound));
+    if (wav != nullptr) {
+        Serial.print("  WAV FileName: ");
+        Serial.println(wav->FileName);
+        Serial.print("  WAV FileOK: "); Serial.println(wav->FileOK);
+    }
+
     if (AlreadyPlaying(Sound))
         RemoveFromPlayList(Sound);
     if (Mix == false)
