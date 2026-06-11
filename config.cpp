@@ -219,6 +219,7 @@ void loadConfig() {
   if (config.version != Version) {
     Serial.println("EEPROM-Version passt nicht – Werkseinstellungen werden geladen.");
     Reset_all();
+    saveConfig();  // Speichere die neuen Werkseinstellungen
   }
 
   EEPROM.end();
