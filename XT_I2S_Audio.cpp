@@ -256,9 +256,10 @@ void XT_Wav_Class::LoadWavFile()
         NumChannels = WavHeader.NumChannels;
         DataSize = WavHeader.DataSize;
         IncreaseBy = float(SampleRate) / SAMPLES_PER_SEC;
-        PlayingTime = (1000 * DataSize) / (uint32_t)(SampleRate);
+        PlayingTime = (1000u * DataSize) / (uint32_t)(SampleRate * BytesPerSample);
         WavFile.seek(44); // Start of wav data
         TotalBytesRead = 0; // Clear to no bytes read in so far
+        SamplesBufferIsEmpty = true;
 
         Speed = 1.0;
         Volume = 100;
@@ -267,6 +268,13 @@ void XT_Wav_Class::LoadWavFile()
 
 void XT_Wav_Class::ReadFile()
 {
+    if (TotalBytesRead >= DataSize)
+    {
+        LastNumBytesRead = 0;
+        SamplesBufferIsEmpty = true;
+        return;
+    }
+
     if (TotalBytesRead + NUM_BYTES_TO_READ_FROM_FILE > DataSize)
         LastNumBytesRead = DataSize - TotalBytesRead;
     else
@@ -278,19 +286,21 @@ void XT_Wav_Class::ReadFile()
         Serial.print("ReadFile: read failed or EOF, bytes=");
         Serial.println(bytes);
         LastNumBytesRead = 0;
+        SamplesBufferIsEmpty = true;
     }
     else
     {
         LastNumBytesRead = bytes;
         SamplesDataIdx = 0;
         TotalBytesRead += LastNumBytesRead;
+        SamplesBufferIsEmpty = false;
     }
 }
 
 void XT_Wav_Class::Init()
 {
     LastIntCount = 0;
-    if (Speed >= 0)
+    if (Speed >= 0 && FileOK)
     {
         TotalBytesRead = 0;
         WavFile.seek(44);
@@ -304,15 +314,34 @@ void XT_Wav_Class::Init()
 
 void XT_Wav_Class::NextSample(int16_t *Left, int16_t *Right)
 {
-    uint32_t IntPartOfCount;
-    float ActualIncreaseBy;
-    float CopyOfSpeed = Speed;
+    if (!FileOK || SamplesBufferIsEmpty)
+    {
+        *Left = 0;
+        *Right = 0;
+        return;
+    }
 
-    ActualIncreaseBy = IncreaseBy;
-    if (CopyOfSpeed <= 1.0)
-        ActualIncreaseBy = IncreaseBy * (abs(CopyOfSpeed));
-    Count += ActualIncreaseBy;
-    IntPartOfCount = floor(Count);
+    float step = IncreaseBy * Speed;
+    Count += step;
+    uint32_t advanceSamples = uint32_t(Count);
+    if (advanceSamples > 0)
+    {
+        Count -= advanceSamples;
+        SamplesDataIdx += size_t(advanceSamples) * BytesPerSample;
+    }
+
+    if (SamplesDataIdx >= LastNumBytesRead)
+    {
+        ReadFile();
+        if (SamplesBufferIsEmpty)
+        {
+            *Left = 0;
+            *Right = 0;
+            Playing = false;
+            TimeLeft = 0;
+            return;
+        }
+    }
 
     if (NumChannels == 2)
     {
@@ -326,40 +355,23 @@ void XT_Wav_Class::NextSample(int16_t *Left, int16_t *Right)
     }
 
     SetVolume(Left, Right, Volume);
-    if (IntPartOfCount > LastIntCount)
-    {
-        if (CopyOfSpeed >= 0)
-        {
-            if (CopyOfSpeed > 1.0)
-            {
-                double IntPartAsFloat, DecimalPart, TempSpeed;
-                TempSpeed = CopyOfSpeed - 1.0;
-                DecimalPart = modf(TempSpeed, &IntPartAsFloat);
-                SamplesDataIdx += BytesPerSample * int(IntPartAsFloat);
-                SpeedUpCount += DecimalPart;
-                if (SpeedUpCount >= 1)
-                {
-                    SamplesDataIdx += BytesPerSample;
-                    SpeedUpCount--;
-                }
-            }
-            LastIntCount = IntPartOfCount;
-            SamplesDataIdx += BytesPerSample;
-            TimeElapsed = 1000 * SamplesDataIdx / BytesPerSample;
-            TimeLeft = PlayingTime - TimeElapsed;
 
-            if (TotalBytesRead >= DataSize)
-            {
-                Count = 0;
-                SamplesDataIdx = 0;
-                Playing = false;
-                TimeLeft = 0;
-            }
-            else if (SamplesDataIdx >= LastNumBytesRead)
-            {
-                ReadFile();
-            }
-        }
+    if (TotalBytesRead >= DataSize)
+    {
+        Count = 0;
+        SamplesDataIdx = 0;
+        Playing = false;
+        TimeLeft = 0;
+        return;
+    }
+
+    uint32_t playedBytes = (TotalBytesRead - LastNumBytesRead) + SamplesDataIdx;
+    TimeElapsed = (playedBytes * 1000u) / (SampleRate * BytesPerSample);
+    TimeLeft = (PlayingTime > TimeElapsed) ? (PlayingTime - TimeElapsed) : 0;
+
+    if (SamplesDataIdx + BytesPerSample >= LastNumBytesRead)
+    {
+        ReadFile();
     }
 }
 
